@@ -233,11 +233,11 @@ impl UdpSocket for tokio::net::UdpSocket {
     }
 
     async fn recv_from(&mut self, buf: &mut [u8]) -> io::Result<(usize, SocketAddr)> {
-        self.recv_from(buf).await
+        tokio::net::UdpSocket::recv_from(self, buf).await
     }
 
     async fn send_to(&mut self, buf: &[u8], target: &SocketAddr) -> io::Result<usize> {
-        self.send_to(buf, target).await
+        tokio::net::UdpSocket::send_to(self, buf, target).await
     }
 }
 
