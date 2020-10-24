@@ -331,19 +331,21 @@ pub mod tokio_runtime {
     use super::*;
     use tokio::net::UdpSocket as TokioUdpSocket;
 
-    impl Spawn for tokio::runtime::Handle {
+    #[derive(Clone)]
+    pub struct TokioHandle;
+    impl Spawn for TokioHandle {
         fn spawn_bg<F>(&mut self, future: F)
         where
             F: Future<Output = Result<(), ProtoError>> + Send + 'static,
         {
-            let _join = self.spawn(future);
+            let _join = tokio::spawn(future);
         }
     }
 
     #[derive(Clone)]
     pub struct TokioRuntime;
     impl RuntimeProvider for TokioRuntime {
-        type Handle = tokio::runtime::Handle;
+        type Handle = TokioHandle;
         type Tcp = AsyncIo02As03<TokioTcpStream>;
         type Timer = TokioTime;
         type Udp = TokioUdpSocket;

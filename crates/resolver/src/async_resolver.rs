@@ -30,7 +30,7 @@ use crate::name_server::{
     RuntimeProvider,
 };
 #[cfg(feature = "tokio-runtime")]
-use crate::name_server::{TokioConnection, TokioConnectionProvider};
+use crate::name_server::{TokioConnection, TokioConnectionProvider, TokioHandle};
 
 use crate::Hosts;
 
@@ -130,8 +130,7 @@ impl TokioAsyncResolver {
     /// documentation for `AsyncResolver` for more information on how to use
     /// the background future.
     pub fn tokio(config: ResolverConfig, options: ResolverOpts) -> Result<Self, ResolveError> {
-        use tokio::runtime::Handle;
-        Self::new(config, options, Handle::current())
+        Self::new(config, options, TokioHandle)
     }
 
     /// Constructs a new Tokio based Resolver with the system configuration.
@@ -140,8 +139,7 @@ impl TokioAsyncResolver {
     #[cfg(any(unix, target_os = "windows"))]
     #[cfg(feature = "system-config")]
     pub fn tokio_from_system_conf() -> Result<Self, ResolveError> {
-        use tokio::runtime::Handle;
-        Self::from_system_conf(Handle::current())
+        Self::from_system_conf(TokioHandle)
     }
 }
 

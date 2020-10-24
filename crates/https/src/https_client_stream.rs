@@ -31,7 +31,7 @@ use tokio_rustls::{
 use webpki::DNSNameRef;
 
 use trust_dns_proto::error::ProtoError;
-use trust_dns_proto::iocompat::AsyncIo03As02;
+use trust_dns_proto::iocompat::TokioAsyncIoBridge;
 use trust_dns_proto::tcp::Connect;
 use trust_dns_proto::xfer::{
     DnsRequest, DnsRequestSender, DnsResponse, DnsResponseFuture, SerialMessage,
@@ -381,7 +381,7 @@ where
     },
     TlsConnecting {
         // FIXME: also abstract away Tokio TLS in RuntimeProvider.
-        tls: TokioTlsConnect<AsyncIo03As02<S>>,
+        tls: TokioTlsConnect<TokioAsyncIoBridge<S>>,
         name_server_name: Arc<String>,
         name_server: SocketAddr,
     },
@@ -392,7 +392,7 @@ where
                         Output = Result<
                             (
                                 SendRequest<Bytes>,
-                                Connection<TokioTlsClientStream<AsyncIo03As02<S>>, Bytes>,
+                                Connection<TokioTlsClientStream<TokioAsyncIoBridge<S>>, Bytes>,
                             ),
                             h2::Error,
                         >,
@@ -444,7 +444,7 @@ where
                     match DNSNameRef::try_from_ascii_str(&dns_name) {
                         Ok(dns_name) => {
                             let tls = TlsConnector::from(tls.client_config);
-                            let tls = tls.connect(dns_name, AsyncIo03As02(tcp));
+                            let tls = tls.connect(dns_name, TokioAsyncIoBridge(tcp));
                             HttpsClientConnectState::TlsConnecting {
                                 name_server_name,
                                 name_server,
