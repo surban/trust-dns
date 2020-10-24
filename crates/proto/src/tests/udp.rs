@@ -37,7 +37,8 @@ pub fn udp_stream_test<S: UdpSocket + Send + 'static, E: Executor>(
                 }
             }
 
-            panic!("timeout");
+            println!("Thread Killer has been awoken, killing process");
+            std::process::exit(-1);
         })
         .unwrap();
 
@@ -136,7 +137,8 @@ pub fn udp_client_stream_test<S: UdpSocket + Send + 'static, E: Executor, TE: Ti
                 }
             }
 
-            panic!("timeout");
+            println!("Thread Killer has been awoken, killing process");
+            std::process::exit(-1);
         })
         .unwrap();
 

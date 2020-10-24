@@ -203,7 +203,8 @@ where
                 }
             }
 
-            panic!("timeout");
+            println!("Thread Killer has been awoken, killing process");
+            std::process::exit(-1);
         })
         .unwrap();
 
@@ -261,7 +262,8 @@ where
                 }
             }
 
-            panic!("timeout");
+            println!("Thread Killer has been awoken, killing process");
+            std::process::exit(-1);
         })
         .unwrap();
 
@@ -297,7 +299,8 @@ where
                 }
             }
 
-            panic!("timeout");
+            println!("Thread Killer has been awoken, killing process");
+            std::process::exit(-1);
         })
         .unwrap();
 
