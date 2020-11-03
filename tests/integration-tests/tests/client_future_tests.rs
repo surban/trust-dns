@@ -907,8 +907,11 @@ fn test_timeout_query_udp() {
         .next()
         .unwrap();
 
-    let stream =
-        UdpClientStream::<TokioUdpSocket>::with_timeout(addr, None, std::time::Duration::from_millis(1));
+    let stream = UdpClientStream::<TokioUdpSocket>::with_timeout(
+        addr,
+        None,
+        std::time::Duration::from_millis(1),
+    );
     let client = AsyncClient::connect(stream);
     let (client, bg) = io_loop.block_on(client).expect("client failed to connect");
     trust_dns_proto::spawn_bg(&io_loop, bg);

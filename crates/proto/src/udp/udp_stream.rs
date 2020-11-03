@@ -169,15 +169,18 @@ pub(crate) struct NextRandomUdpSocket<S> {
 
 impl<S: UdpSocket> NextRandomUdpSocket<S> {
     /// Creates a future for randomly binding to a local socket address for client connections.
-    pub(crate) fn new(name_server: &SocketAddr, bind_addr: &Option<IpAddr>) -> NextRandomUdpSocket<S> {
+    pub(crate) fn new(
+        name_server: &SocketAddr,
+        bind_addr: &Option<IpAddr>,
+    ) -> NextRandomUdpSocket<S> {
         let bind_address: IpAddr = match bind_addr {
             Some(ba) => ba.clone(),
             None => match *name_server {
                 SocketAddr::V4(..) => IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)),
                 SocketAddr::V6(..) => IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0)),
-            }
-        };      
- 
+            },
+        };
+
         NextRandomUdpSocket {
             bind_address,
             marker: PhantomData,

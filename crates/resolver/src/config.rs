@@ -586,7 +586,7 @@ impl NameServerConfigGroup {
             server.bind_addr = bind_addr.clone();
         }
         self
-    }    
+    }
 }
 
 impl Default for NameServerConfigGroup {

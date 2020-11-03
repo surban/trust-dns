@@ -5,7 +5,6 @@
 // http://opensource.org/licenses/MIT>, at your option. This file may not be
 // copied, modified, or distributed except according to those terms.
 
-use std::{borrow::Borrow, net::IpAddr};
 use std::fmt::{self, Display};
 use std::marker::PhantomData;
 use std::net::SocketAddr;
@@ -13,6 +12,7 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::{borrow::Borrow, net::IpAddr};
 
 use futures_util::{future::Future, stream::Stream};
 use log::{debug, warn};
@@ -218,7 +218,10 @@ impl<S: Send + Unpin, MF: MessageFinalizer> Future for UdpClientConnect<S, MF> {
                 .name_server
                 .take()
                 .expect("UdpClientConnect invalid state: name_server"),
-            bind_addr: self.bind_addr.take().expect("UdpClientConnect invalid state: bind_addr"),
+            bind_addr: self
+                .bind_addr
+                .take()
+                .expect("UdpClientConnect invalid state: bind_addr"),
             is_shutdown: false,
             timeout: self.timeout,
             signer: self.signer.take(),

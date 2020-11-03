@@ -45,12 +45,19 @@ impl UdpClientConnection {
     ///
     /// * `name_server` - address of the name server to use for queries
     /// * `bind_addr` - IP address to connect from
-    pub fn with_bind_addr(name_server: SocketAddr, bind_addr: Option<IpAddr>) -> ClientResult<Self> {
+    pub fn with_bind_addr(
+        name_server: SocketAddr,
+        bind_addr: Option<IpAddr>,
+    ) -> ClientResult<Self> {
         Self::with_timeout(name_server, bind_addr, Duration::from_secs(5))
     }
 
     /// Allows a custom timeout
-    pub fn with_timeout(name_server: SocketAddr, bind_addr: Option<IpAddr>, timeout: Duration) -> ClientResult<Self> {
+    pub fn with_timeout(
+        name_server: SocketAddr,
+        bind_addr: Option<IpAddr>,
+        timeout: Duration,
+    ) -> ClientResult<Self> {
         Ok(UdpClientConnection {
             name_server,
             bind_addr,
@@ -64,6 +71,11 @@ impl ClientConnection for UdpClientConnection {
     type SenderFuture = UdpClientConnect<UdpSocket, Signer>;
 
     fn new_stream(&self, signer: Option<Arc<Signer>>) -> Self::SenderFuture {
-        UdpClientStream::with_timeout_and_signer(self.name_server, self.bind_addr, self.timeout, signer)
+        UdpClientStream::with_timeout_and_signer(
+            self.name_server,
+            self.bind_addr,
+            self.timeout,
+            signer,
+        )
     }
 }

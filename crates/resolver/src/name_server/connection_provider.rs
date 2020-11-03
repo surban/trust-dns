@@ -121,8 +121,11 @@ where
     ) -> Self::FutureConn {
         let dns_connect = match config.protocol {
             Protocol::Udp => {
-                let stream =
-                    UdpClientStream::<R::Udp>::with_timeout(config.socket_addr, config.bind_addr, options.timeout);
+                let stream = UdpClientStream::<R::Udp>::with_timeout(
+                    config.socket_addr,
+                    config.bind_addr,
+                    options.timeout,
+                );
                 let exchange = DnsExchange::connect(stream);
                 ConnectionConnect::Udp(exchange)
             }
