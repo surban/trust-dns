@@ -5,7 +5,7 @@
 // http://opensource.org/licenses/MIT>, at your option. This file may not be
 // copied, modified, or distributed except according to those terms.
 
-use std::net::SocketAddr;
+use std::net::{IpAddr, SocketAddr};
 
 use console::style;
 use structopt::StructOpt;
@@ -57,6 +57,10 @@ struct Opts {
     /// Specify a nameserver to use, ip and port e.g. 8.8.8.8:53 or [2001:4860:4860::8888]:53 (port required)
     #[structopt(short = "n", long, require_delimiter = true)]
     nameserver: Vec<SocketAddr>,
+
+    /// Specify the IP address to connect from.
+    #[structopt(long)]
+    bind: Option<IpAddr>,
 
     /// Use ipv4 addresses only, default is both ipv4 and ipv6
     #[structopt(long)]
@@ -137,6 +141,7 @@ pub async fn main() -> Result<(), Box<dyn std::error::Error>> {
             trust_nx_responses: false,
             #[cfg(feature = "dns-over-rustls")]
             tls_config: None,
+            bind_addr: opts.bind.clone(),
         });
 
         name_servers.push(NameServerConfig {
@@ -146,6 +151,7 @@ pub async fn main() -> Result<(), Box<dyn std::error::Error>> {
             trust_nx_responses: false,
             #[cfg(feature = "dns-over-rustls")]
             tls_config: None,
+            bind_addr: opts.bind.clone(),
         });
     }
 

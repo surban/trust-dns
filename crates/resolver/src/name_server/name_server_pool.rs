@@ -457,6 +457,7 @@ mod tests {
             trust_nx_responses: false,
             #[cfg(feature = "dns-over-rustls")]
             tls_config: None,
+            bind_addr: None,
         };
 
         let config2 = NameServerConfig {
@@ -466,6 +467,7 @@ mod tests {
             trust_nx_responses: false,
             #[cfg(feature = "dns-over-rustls")]
             tls_config: None,
+            bind_addr: None,
         };
 
         let mut resolver_config = ResolverConfig::new();
@@ -523,6 +525,7 @@ mod tests {
             trust_nx_responses: false,
             #[cfg(feature = "dns-over-rustls")]
             tls_config: None,
+            bind_addr: None,
         };
 
         let opts = ResolverOpts::default();

@@ -5,7 +5,7 @@
 // http://opensource.org/licenses/MIT>, at your option. This file may not be
 // copied, modified, or distributed except according to those terms.
 
-use std::borrow::Borrow;
+use std::{borrow::Borrow, net::IpAddr};
 use std::fmt::{self, Display};
 use std::marker::PhantomData;
 use std::net::SocketAddr;
@@ -35,6 +35,7 @@ where
     MF: MessageFinalizer,
 {
     name_server: SocketAddr,
+    bind_addr: Option<IpAddr>,
     timeout: Duration,
     is_shutdown: bool,
     signer: Option<Arc<MF>>,
@@ -52,7 +53,7 @@ impl<S: Send> UdpClientStream<S, NoopMessageFinalizer> {
     ///  handle which can be used to send messages into the stream.
     #[allow(clippy::new_ret_no_self)]
     pub fn new(name_server: SocketAddr) -> UdpClientConnect<S, NoopMessageFinalizer> {
-        Self::with_timeout(name_server, Duration::from_secs(5))
+        Self::with_bind_addr(name_server, None)
     }
 
     /// Constructs a new UdpStream for a client to the specified SocketAddr.
@@ -60,12 +61,28 @@ impl<S: Send> UdpClientStream<S, NoopMessageFinalizer> {
     /// # Arguments
     ///
     /// * `name_server` - the IP and Port of the DNS server to connect to
+    /// * `bind_addr` - the IP to connect from
+    /// * `timeout` - connection timeout
+    pub fn with_bind_addr(
+        name_server: SocketAddr,
+        bind_addr: Option<IpAddr>,
+    ) -> UdpClientConnect<S, NoopMessageFinalizer> {
+        Self::with_timeout(name_server, bind_addr, Duration::from_secs(5))
+    }
+
+    /// Constructs a new UdpStream for a client to the specified SocketAddr.
+    ///
+    /// # Arguments
+    ///
+    /// * `name_server` - the IP and Port of the DNS server to connect to
+    /// * `bind_addr` - the IP to connect from
     /// * `timeout` - connection timeout
     pub fn with_timeout(
         name_server: SocketAddr,
+        bind_addr: Option<IpAddr>,
         timeout: Duration,
     ) -> UdpClientConnect<S, NoopMessageFinalizer> {
-        Self::with_timeout_and_signer(name_server, timeout, None)
+        Self::with_timeout_and_signer(name_server, bind_addr, timeout, None)
     }
 }
 
@@ -75,14 +92,17 @@ impl<S: Send, MF: MessageFinalizer> UdpClientStream<S, MF> {
     /// # Arguments
     ///
     /// * `name_server` - the IP and Port of the DNS server to connect to
+    /// * `bind_addr` - the IP address to connect from
     /// * `timeout` - connection timeout
     pub fn with_timeout_and_signer(
         name_server: SocketAddr,
+        bind_addr: Option<IpAddr>,
         timeout: Duration,
         signer: Option<Arc<MF>>,
     ) -> UdpClientConnect<S, MF> {
         UdpClientConnect {
             name_server: Some(name_server),
+            bind_addr: Some(bind_addr),
             timeout,
             signer,
             marker: PhantomData::<S>,
@@ -143,10 +163,11 @@ impl<S: UdpSocket + Send + 'static, MF: MessageFinalizer> DnsRequestSender
 
         let message_id = message.id();
         let message = SerialMessage::new(bytes, self.name_server);
+        let bind_addr = self.bind_addr.clone();
 
         S::Time::timeout::<Pin<Box<dyn Future<Output = Result<DnsResponse, ProtoError>> + Send>>>(
             self.timeout,
-            Box::pin(send_serial_message::<S>(message, message_id)),
+            Box::pin(send_serial_message::<S>(message, message_id, bind_addr)),
         )
         .into()
     }
@@ -181,6 +202,7 @@ where
     MF: MessageFinalizer,
 {
     name_server: Option<SocketAddr>,
+    bind_addr: Option<Option<IpAddr>>,
     timeout: Duration,
     signer: Option<Arc<MF>>,
     marker: PhantomData<S>,
@@ -196,6 +218,7 @@ impl<S: Send + Unpin, MF: MessageFinalizer> Future for UdpClientConnect<S, MF> {
                 .name_server
                 .take()
                 .expect("UdpClientConnect invalid state: name_server"),
+            bind_addr: self.bind_addr.take().expect("UdpClientConnect invalid state: bind_addr"),
             is_shutdown: false,
             timeout: self.timeout,
             signer: self.signer.take(),
@@ -207,9 +230,10 @@ impl<S: Send + Unpin, MF: MessageFinalizer> Future for UdpClientConnect<S, MF> {
 async fn send_serial_message<S: UdpSocket + Send>(
     msg: SerialMessage,
     msg_id: u16,
+    bind_addr: Option<IpAddr>,
 ) -> Result<DnsResponse, ProtoError> {
     let name_server = msg.addr();
-    let mut socket: S = NextRandomUdpSocket::new(&name_server).await?;
+    let mut socket: S = NextRandomUdpSocket::new(&name_server, &bind_addr).await?;
     let bytes = msg.bytes();
     let addr = &msg.addr();
     let len_sent: usize = socket.send_to(bytes, addr).await?;

@@ -7,7 +7,7 @@
 
 //! UDP based DNS client connection for Client impls
 
-use std::net::SocketAddr;
+use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -25,6 +25,7 @@ use tokio::net::UdpSocket;
 #[derive(Clone)]
 pub struct UdpClientConnection {
     name_server: SocketAddr,
+    bind_addr: Option<IpAddr>,
     timeout: Duration,
 }
 
@@ -35,13 +36,24 @@ impl UdpClientConnection {
     ///
     /// * `name_server` - address of the name server to use for queries
     pub fn new(name_server: SocketAddr) -> ClientResult<Self> {
-        Self::with_timeout(name_server, Duration::from_secs(5))
+        Self::with_bind_addr(name_server, None)
+    }
+
+    /// Creates a new client connection. With a default timeout of 5 seconds
+    ///
+    /// # Arguments
+    ///
+    /// * `name_server` - address of the name server to use for queries
+    /// * `bind_addr` - IP address to connect from
+    pub fn with_bind_addr(name_server: SocketAddr, bind_addr: Option<IpAddr>) -> ClientResult<Self> {
+        Self::with_timeout(name_server, bind_addr, Duration::from_secs(5))
     }
 
     /// Allows a custom timeout
-    pub fn with_timeout(name_server: SocketAddr, timeout: Duration) -> ClientResult<Self> {
+    pub fn with_timeout(name_server: SocketAddr, bind_addr: Option<IpAddr>, timeout: Duration) -> ClientResult<Self> {
         Ok(UdpClientConnection {
             name_server,
+            bind_addr,
             timeout,
         })
     }
@@ -52,6 +64,6 @@ impl ClientConnection for UdpClientConnection {
     type SenderFuture = UdpClientConnect<UdpSocket, Signer>;
 
     fn new_stream(&self, signer: Option<Arc<Signer>>) -> Self::SenderFuture {
-        UdpClientStream::with_timeout_and_signer(self.name_server, self.timeout, signer)
+        UdpClientStream::with_timeout_and_signer(self.name_server, self.bind_addr, self.timeout, signer)
     }
 }

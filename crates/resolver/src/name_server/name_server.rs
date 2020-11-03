@@ -258,6 +258,7 @@ where
         trust_nx_responses,
         #[cfg(feature = "dns-over-rustls")]
         tls_config: None,
+        bind_addr: None,
     };
     NameServer::new_with_provider(config, options, conn_provider)
 }
@@ -289,6 +290,7 @@ mod tests {
             trust_nx_responses: false,
             #[cfg(feature = "dns-over-rustls")]
             tls_config: None,
+            bind_addr: None,
         };
         let mut io_loop = Runtime::new().unwrap();
         let runtime_handle = io_loop.handle().clone();
@@ -323,6 +325,7 @@ mod tests {
             trust_nx_responses: false,
             #[cfg(feature = "dns-over-rustls")]
             tls_config: None,
+            bind_addr: None,
         };
         let mut io_loop = Runtime::new().unwrap();
         let runtime_handle = io_loop.handle().clone();
