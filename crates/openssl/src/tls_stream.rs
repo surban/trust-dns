@@ -5,10 +5,10 @@
 // http://opensource.org/licenses/MIT>, at your option. This file may not be
 // copied, modified, or distributed except according to those terms.
 
-use std::future::Future;
 use std::io;
 use std::net::SocketAddr;
 use std::pin::Pin;
+use std::{future::Future, net::IpAddr};
 
 use futures_util::{future, TryFutureExt};
 use openssl::pkcs12::ParsedPkcs12;
@@ -128,13 +128,16 @@ async fn connect_tls(
     tls_config: ConnectConfiguration,
     dns_name: String,
     name_server: SocketAddr,
+    bind_addr: Option<IpAddr>,
 ) -> Result<TokioTlsStream<TokioTcpStream>, io::Error> {
-    let tcp = tcp::tokio::connect(&name_server).await.map_err(|e| {
-        io::Error::new(
-            io::ErrorKind::ConnectionRefused,
-            format!("tls error: {}", e),
-        )
-    })?;
+    let tcp = tcp::tokio::connect(&name_server, &bind_addr)
+        .await
+        .map_err(|e| {
+            io::Error::new(
+                io::ErrorKind::ConnectionRefused,
+                format!("tls error: {}", e),
+            )
+        })?;
     let result = tokio_openssl::connect(tls_config, &dns_name, tcp).await;
 
     result.map_err(|e| {
@@ -203,6 +206,7 @@ impl TlsStreamBuilder {
     pub fn build(
         self,
         name_server: SocketAddr,
+        bind_addr: Option<IpAddr>,
         dns_name: String,
     ) -> (
         Pin<Box<dyn Future<Output = Result<TlsStream, io::Error>> + Send>>,
@@ -242,7 +246,7 @@ impl TlsStreamBuilder {
         // This set of futures collapses the next tcp socket into a stream which can be used for
         //  sending and receiving tcp packets.
         let stream = Box::pin(
-            connect_tls(tls_config, dns_name, name_server).map_ok(move |s| {
+            connect_tls(tls_config, dns_name, name_server, bind_addr).map_ok(move |s| {
                 TcpStream::from_stream_with_receiver(
                     AsyncIo02As03(s),
                     name_server,

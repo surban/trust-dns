@@ -7,7 +7,7 @@
 
 //! TCP based DNS client connection for Client impls
 
-use std::net::SocketAddr;
+use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -26,6 +26,7 @@ use crate::rr::dnssec::Signer;
 #[derive(Clone)]
 pub struct TcpClientConnection {
     name_server: SocketAddr,
+    bind_addr: Option<IpAddr>,
     timeout: Duration,
 }
 
@@ -41,7 +42,25 @@ impl TcpClientConnection {
     ///
     /// * `name_server` - address of the name server to use for queries
     pub fn new(name_server: SocketAddr) -> ClientResult<Self> {
-        Self::with_timeout(name_server, Duration::from_secs(5))
+        Self::with_bind_addr(name_server, None)
+    }
+
+    /// Creates a new client connection.
+    ///
+    /// *Note* this has side affects of establishing the connection to the specified DNS server and
+    ///        starting the event_loop. Expect this to change in the future.
+    ///
+    /// Default connection timeout is 5 seconds
+    ///
+    /// # Arguments
+    ///
+    /// * `name_server` - address of the name server to use for queries
+    /// * `bind_addr` - address to connect from
+    pub fn with_bind_addr(
+        name_server: SocketAddr,
+        bind_addr: Option<IpAddr>,
+    ) -> ClientResult<Self> {
+        Self::with_timeout(name_server, bind_addr, Duration::from_secs(5))
     }
 
     /// Creates a new client connection.
@@ -52,9 +71,15 @@ impl TcpClientConnection {
     /// # Arguments
     ///
     /// * `name_server` - address of the name server to use for queries
-    pub fn with_timeout(name_server: SocketAddr, timeout: Duration) -> ClientResult<Self> {
+    /// * `bind_addr` - address to connect from
+    pub fn with_timeout(
+        name_server: SocketAddr,
+        bind_addr: Option<IpAddr>,
+        timeout: Duration,
+    ) -> ClientResult<Self> {
         Ok(TcpClientConnection {
             name_server,
+            bind_addr,
             timeout,
         })
     }
@@ -71,6 +96,7 @@ impl ClientConnection for TcpClientConnection {
     fn new_stream(&self, signer: Option<Arc<Signer>>) -> Self::SenderFuture {
         let (tcp_client_stream, handle) = TcpClientStream::<AsyncIo02As03<TcpStream>>::with_timeout(
             self.name_server,
+            self.bind_addr,
             self.timeout,
         );
         DnsMultiplexer::new(tcp_client_stream, handle, signer)

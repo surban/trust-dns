@@ -7,11 +7,11 @@
 
 //! DNS over TLS I/O stream implementation for Rustls
 
-use std::future::Future;
 use std::io;
 use std::net::SocketAddr;
 use std::pin::Pin;
 use std::sync::Arc;
+use std::{future::Future, net::IpAddr};
 
 use futures_util::TryFutureExt;
 use rustls::ClientConfig;
@@ -73,6 +73,7 @@ pub fn tls_from_stream<S: DnsTcpStream>(
 #[allow(clippy::type_complexity)]
 pub fn tls_connect(
     name_server: SocketAddr,
+    bind_addr: Option<IpAddr>,
     dns_name: String,
     client_config: Arc<ClientConfig>,
 ) -> (
@@ -93,6 +94,7 @@ pub fn tls_connect(
     let stream = Box::pin(connect_tls(
         tls_connector,
         name_server,
+        bind_addr,
         dns_name,
         outbound_messages,
     ));
@@ -103,10 +105,11 @@ pub fn tls_connect(
 async fn connect_tls(
     tls_connector: TlsConnector,
     name_server: SocketAddr,
+    bind_addr: Option<IpAddr>,
     dns_name: String,
     outbound_messages: StreamReceiver,
 ) -> io::Result<TcpStream<AsyncIo02As03<TokioTlsClientStream>>> {
-    let tcp = tcp::tokio::connect(&name_server).await?;
+    let tcp = tcp::tokio::connect(&name_server, &bind_addr).await?;
 
     let dns_name = DNSNameRef::try_from_ascii_str(&dns_name)
         .map(DNSName::from)

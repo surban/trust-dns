@@ -131,10 +131,11 @@ where
             }
             Protocol::Tcp => {
                 let socket_addr = config.socket_addr;
+                let bind_addr = config.bind_addr;
                 let timeout = options.timeout;
 
                 let (stream, handle) =
-                    TcpClientStream::<R::Tcp>::with_timeout(socket_addr, timeout);
+                    TcpClientStream::<R::Tcp>::with_timeout(socket_addr, bind_addr, timeout);
                 // TODO: need config for Signer...
                 let dns_conn = DnsMultiplexer::with_timeout(
                     stream,
@@ -149,16 +150,19 @@ where
             #[cfg(feature = "dns-over-tls")]
             Protocol::Tls => {
                 let socket_addr = config.socket_addr;
+                let bind_addr = config.bind_addr;
                 let timeout = options.timeout;
                 let tls_dns_name = config.tls_dns_name.clone().unwrap_or_default();
                 #[cfg(feature = "dns-over-rustls")]
                 let client_config = config.tls_config.clone();
 
                 #[cfg(feature = "dns-over-rustls")]
-                let (stream, handle) =
-                    { crate::tls::new_tls_stream(socket_addr, tls_dns_name, client_config) };
+                let (stream, handle) = {
+                    crate::tls::new_tls_stream(socket_addr, bind_addr, tls_dns_name, client_config)
+                };
                 #[cfg(not(feature = "dns-over-rustls"))]
-                let (stream, handle) = { crate::tls::new_tls_stream(socket_addr, tls_dns_name) };
+                let (stream, handle) =
+                    { crate::tls::new_tls_stream(socket_addr, bind_addr, tls_dns_name) };
 
                 let dns_conn = DnsMultiplexer::with_timeout(
                     stream,
@@ -173,12 +177,17 @@ where
             #[cfg(feature = "dns-over-https")]
             Protocol::Https => {
                 let socket_addr = config.socket_addr;
+                let bind_addr = config.bind_addr;
                 let tls_dns_name = config.tls_dns_name.clone().unwrap_or_default();
                 #[cfg(feature = "dns-over-rustls")]
                 let client_config = config.tls_config.clone();
 
-                let exchange =
-                    crate::https::new_https_stream::<R>(socket_addr, tls_dns_name, client_config);
+                let exchange = crate::https::new_https_stream::<R>(
+                    socket_addr,
+                    bind_addr,
+                    tls_dns_name,
+                    client_config,
+                );
                 ConnectionConnect::Https(exchange)
             }
             #[cfg(feature = "mdns")]

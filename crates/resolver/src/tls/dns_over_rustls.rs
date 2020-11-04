@@ -8,7 +8,7 @@
 #![cfg(feature = "dns-over-rustls")]
 #![allow(dead_code)]
 
-use std::net::SocketAddr;
+use std::net::{IpAddr, SocketAddr};
 use std::pin::Pin;
 use std::sync::Arc;
 
@@ -42,6 +42,7 @@ lazy_static! {
 #[allow(clippy::type_complexity)]
 pub(crate) fn new_tls_stream(
     socket_addr: SocketAddr,
+    bind_addr: Option<IpAddr>,
     dns_name: String,
     client_config: Option<TlsClientConfig>,
 ) -> (
@@ -52,6 +53,6 @@ pub(crate) fn new_tls_stream(
         || CLIENT_CONFIG.clone(),
         |TlsClientConfig(client_config)| client_config,
     );
-    let (stream, handle) = tls_client_connect(socket_addr, dns_name, client_config);
+    let (stream, handle) = tls_client_connect(socket_addr, bind_addr, dns_name, client_config);
     (Box::pin(stream), handle)
 }

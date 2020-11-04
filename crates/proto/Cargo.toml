@@ -40,7 +40,7 @@ dnssec-openssl = ["dnssec", "openssl"]
 dnssec-ring = ["dnssec", "ring"]
 dnssec = []
 testing = []
-tokio-runtime = ["tokio/rt-core", "tokio/udp", "tokio/tcp", "tokio/time"]
+tokio-runtime = ["tokio/blocking", "tokio/rt-core", "tokio/udp", "tokio/tcp", "tokio/time", "socket2"]
 default = ["tokio-runtime"]
 
 serde-config = ["serde"]

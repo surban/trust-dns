@@ -8,7 +8,7 @@
 #![cfg(feature = "dns-over-native-tls")]
 #![allow(dead_code)]
 
-use std::net::SocketAddr;
+use std::net::{IpAddr, SocketAddr};
 use std::pin::Pin;
 
 use futures_util::future::Future;
@@ -20,11 +20,12 @@ use trust_dns_native_tls::{TlsClientStream, TlsClientStreamBuilder};
 #[allow(clippy::type_complexity)]
 pub(crate) fn new_tls_stream(
     socket_addr: SocketAddr,
+    bind_addr: Option<IpAddr>,
     dns_name: String,
 ) -> (
     Pin<Box<dyn Future<Output = Result<TlsClientStream, ProtoError>> + Send>>,
     BufDnsStreamHandle,
 ) {
     let tls_builder = TlsClientStreamBuilder::new();
-    tls_builder.build(socket_addr, dns_name)
+    tls_builder.build(socket_addr, bind_addr, dns_name)
 }

@@ -1,4 +1,4 @@
-use std::net::SocketAddr;
+use std::net::{IpAddr, SocketAddr};
 
 use crate::name_server::RuntimeProvider;
 use crate::tls::CLIENT_CONFIG;
@@ -12,6 +12,7 @@ use crate::config::TlsClientConfig;
 #[allow(clippy::type_complexity)]
 pub(crate) fn new_https_stream<R>(
     socket_addr: SocketAddr,
+    bind_addr: Option<IpAddr>,
     dns_name: String,
     client_config: Option<TlsClientConfig>,
 ) -> DnsExchangeConnect<HttpsClientConnect<R::Tcp>, HttpsClientStream, TokioTime>
@@ -24,7 +25,7 @@ where
     );
 
     let https_builder = HttpsClientStreamBuilder::with_client_config(client_config);
-    DnsExchange::connect(https_builder.build::<R::Tcp>(socket_addr, dns_name))
+    DnsExchange::connect(https_builder.build::<R::Tcp>(socket_addr, bind_addr, dns_name))
 }
 
 #[cfg(test)]

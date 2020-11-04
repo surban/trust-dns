@@ -5,13 +5,16 @@
 // http://opensource.org/licenses/MIT>, at your option. This file may not be
 // copied, modified, or distributed except according to those terms.
 
-use std::fmt::{self, Display};
 #[cfg(feature = "tokio-runtime")]
 use std::io;
 use std::net::SocketAddr;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use std::time::Duration;
+use std::{
+    fmt::{self, Display},
+    net::IpAddr,
+};
 
 #[cfg(feature = "tokio-runtime")]
 use async_trait::async_trait;
@@ -53,7 +56,26 @@ impl<S: Connect> TcpClientStream<S> {
         TcpClientConnect<S>,
         Box<dyn DnsStreamHandle + 'static + Send>,
     ) {
-        Self::with_timeout(name_server, Duration::from_secs(5))
+        Self::with_bind_addr(name_server, None)
+    }
+
+    /// Constructs a new TcpStream for a client to the specified SocketAddr.
+    ///
+    /// Defaults to a 5 second timeout
+    ///
+    /// # Arguments
+    ///
+    /// * `name_server` - the IP and Port of the DNS server to connect to
+    /// * `bind_addr` - the IP to connect from
+    #[allow(clippy::new_ret_no_self)]
+    pub fn with_bind_addr(
+        name_server: SocketAddr,
+        bind_addr: Option<IpAddr>,
+    ) -> (
+        TcpClientConnect<S>,
+        Box<dyn DnsStreamHandle + 'static + Send>,
+    ) {
+        Self::with_timeout(name_server, bind_addr, Duration::from_secs(5))
     }
 
     /// Constructs a new TcpStream for a client to the specified SocketAddr.
@@ -61,15 +83,17 @@ impl<S: Connect> TcpClientStream<S> {
     /// # Arguments
     ///
     /// * `name_server` - the IP and Port of the DNS server to connect to
+    /// * `bind_addr` - the IP to connect from
     /// * `timeout` - connection timeout
     pub fn with_timeout(
         name_server: SocketAddr,
+        bind_addr: Option<IpAddr>,
         timeout: Duration,
     ) -> (
         TcpClientConnect<S>,
         Box<dyn DnsStreamHandle + 'static + Send>,
     ) {
-        let (stream_future, sender) = TcpStream::<S>::with_timeout(name_server, timeout);
+        let (stream_future, sender) = TcpStream::<S>::with_timeout(name_server, bind_addr, timeout);
 
         let new_future = Box::pin(
             stream_future
@@ -149,8 +173,10 @@ where
 #[cfg(feature = "tokio-runtime")]
 #[async_trait]
 impl Connect for AsyncIo02As03<TokioTcpStream> {
-    async fn connect(addr: SocketAddr) -> io::Result<Self> {
-        super::tokio::connect(&addr).await.map(AsyncIo02As03)
+    async fn connect(addr: SocketAddr, bind_addr: Option<IpAddr>) -> io::Result<Self> {
+        super::tokio::connect(&addr, &bind_addr)
+            .await
+            .map(AsyncIo02As03)
     }
 }
 

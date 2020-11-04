@@ -933,6 +933,7 @@ fn test_timeout_query_tcp() {
 
     let (stream, sender) = TcpClientStream::<AsyncIo02As03<TokioTcpStream>>::with_timeout(
         addr,
+        None,
         std::time::Duration::from_millis(1),
     );
     let client = AsyncClient::with_timeout(

@@ -224,8 +224,9 @@ fn test_timeout_query_tcp() {
         .unwrap();
 
     // TODO: need to add timeout length to SyncClient
-    let client =
-        SyncClient::new(TcpClientConnection::with_timeout(addr, Duration::from_millis(1)).unwrap());
+    let client = SyncClient::new(
+        TcpClientConnection::with_timeout(addr, None, Duration::from_millis(1)).unwrap(),
+    );
     test_timeout_query(client);
 }
 

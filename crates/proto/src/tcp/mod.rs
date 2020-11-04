@@ -24,12 +24,37 @@ pub use self::tcp_stream::{Connect, DnsTcpStream, TcpStream};
 #[cfg(feature = "tokio-runtime")]
 #[doc(hidden)]
 pub mod tokio {
-    use std::io;
+    use socket2::{Domain, Protocol, Socket, Type};
     use std::net::SocketAddr;
+    use std::{io, net::IpAddr};
     use tokio::net::TcpStream as TokioTcpStream;
+    use tokio::task::spawn_blocking;
 
-    pub async fn connect(addr: &SocketAddr) -> Result<TokioTcpStream, io::Error> {
-        let stream = TokioTcpStream::connect(addr).await?;
+    pub async fn connect(
+        addr: &SocketAddr,
+        bind_addr: &Option<IpAddr>,
+    ) -> Result<TokioTcpStream, io::Error> {
+        let stream = match bind_addr {
+            Some(bind_addr) => {
+                let addr = *addr;
+                let bind_addr = *bind_addr;
+                spawn_blocking(move || {
+                    let domain = match bind_addr {
+                        IpAddr::V4(_) => Domain::ipv4(),
+                        IpAddr::V6(_) => Domain::ipv6(),
+                    };
+                    let socket = Socket::new(domain, Type::stream(), Some(Protocol::tcp()))?;
+                    // Binding to port zero lets the OS assign a free port.
+                    socket.bind(&SocketAddr::new(bind_addr, 0).into())?;
+                    socket.connect(&addr.into())?;
+                    let stream = TokioTcpStream::from_std(socket.into_tcp_stream())?;
+                    Ok::<_, io::Error>(stream)
+                })
+                .await
+                .unwrap()?
+            }
+            None => TokioTcpStream::connect(addr).await?,
+        };
         stream.set_nodelay(true)?;
         Ok(stream)
     }

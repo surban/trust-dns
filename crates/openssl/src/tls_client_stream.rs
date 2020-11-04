@@ -5,10 +5,10 @@
 // http://opensource.org/licenses/MIT>, at your option. This file may not be
 // copied, modified, or distributed except according to those terms.
 
-use std::future::Future;
 use std::io;
 use std::net::SocketAddr;
 use std::pin::Pin;
+use std::{future::Future, net::IpAddr};
 
 use futures_util::TryFutureExt;
 #[cfg(feature = "mtls")]
@@ -69,12 +69,13 @@ impl TlsClientStreamBuilder {
     pub fn build(
         self,
         name_server: SocketAddr,
+        bind_addr: Option<IpAddr>,
         dns_name: String,
     ) -> (
         Pin<Box<dyn Future<Output = Result<TlsClientStream, ProtoError>> + Send>>,
         BufDnsStreamHandle,
     ) {
-        let (stream_future, sender) = self.0.build(name_server, dns_name);
+        let (stream_future, sender) = self.0.build(name_server, bind_addr, dns_name);
 
         let new_future = Box::pin(
             stream_future

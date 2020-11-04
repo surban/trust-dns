@@ -8,7 +8,7 @@
 //! TLS based DNS client connection for Client impls
 //! TODO: This modules was moved from trust-dns-rustls, it really doesn't need to exist if tests are refactored...
 
-use std::net::SocketAddr;
+use std::net::{IpAddr, SocketAddr};
 use std::pin::Pin;
 use std::sync::Arc;
 
@@ -27,6 +27,7 @@ use trust_dns_rustls::{tls_client_connect, TlsClientStream};
 /// Use with `trust_dns_client::client::Client` impls
 pub struct TlsClientConnection {
     name_server: SocketAddr,
+    bind_addr: Option<IpAddr>,
     dns_name: String,
     client_config: Arc<ClientConfig>,
 }
@@ -58,6 +59,7 @@ impl ClientConnection for TlsClientConnection {
     fn new_stream(&self, signer: Option<Arc<Signer>>) -> Self::SenderFuture {
         let (tls_client_stream, handle) = tls_client_connect(
             self.name_server,
+            self.bind_addr,
             self.dns_name.clone(),
             self.client_config.clone(),
         );

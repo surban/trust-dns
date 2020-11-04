@@ -7,10 +7,10 @@
 
 //! DNS over TLS client implementation for Rustls
 
-use std::future::Future;
 use std::net::SocketAddr;
 use std::pin::Pin;
 use std::sync::Arc;
+use std::{future::Future, net::IpAddr};
 
 use futures_util::TryFutureExt;
 use rustls::ClientConfig;
@@ -36,13 +36,14 @@ pub type TlsClientStream =
 #[allow(clippy::type_complexity)]
 pub fn tls_client_connect(
     name_server: SocketAddr,
+    bind_addr: Option<IpAddr>,
     dns_name: String,
     client_config: Arc<ClientConfig>,
 ) -> (
     Pin<Box<dyn Future<Output = Result<TlsClientStream, ProtoError>> + Send + Unpin>>,
     BufDnsStreamHandle,
 ) {
-    let (stream_future, sender) = tls_connect(name_server, dns_name, client_config);
+    let (stream_future, sender) = tls_connect(name_server, bind_addr, dns_name, client_config);
 
     let new_future = Box::pin(
         stream_future

@@ -7,10 +7,10 @@
 
 //! Base TlsStream
 
-use std::future::Future;
 use std::io;
 use std::net::SocketAddr;
 use std::pin::Pin;
+use std::{future::Future, net::IpAddr};
 
 use futures_util::TryFutureExt;
 use native_tls::Protocol::Tlsv12;
@@ -117,6 +117,7 @@ impl TlsStreamBuilder {
     pub fn build(
         self,
         name_server: SocketAddr,
+        bind_addr: Option<IpAddr>,
         dns_name: String,
     ) -> (
         // TODO: change to impl?
@@ -125,13 +126,14 @@ impl TlsStreamBuilder {
     ) {
         let (message_sender, outbound_messages) = BufStreamHandle::create();
 
-        let stream = self.inner_build(name_server, dns_name, outbound_messages);
+        let stream = self.inner_build(name_server, bind_addr, dns_name, outbound_messages);
         (Box::pin(stream), message_sender)
     }
 
     async fn inner_build(
         self,
         name_server: SocketAddr,
+        bind_addr: Option<IpAddr>,
         dns_name: String,
         outbound_messages: StreamReceiver,
     ) -> Result<TlsStream, io::Error> {
@@ -140,7 +142,7 @@ impl TlsStreamBuilder {
         let ca_chain = self.ca_chain.clone();
         let identity = self.identity;
 
-        let tcp_stream = tcp::tokio::connect(&name_server).await;
+        let tcp_stream = tcp::tokio::connect(&name_server, &bind_addr).await;
 
         // TODO: for some reason the above wouldn't accept a ?
         let tcp_stream = match tcp_stream {

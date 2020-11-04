@@ -9,7 +9,7 @@
 
 use std::io;
 use std::mem;
-use std::net::SocketAddr;
+use std::net::{IpAddr, SocketAddr};
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use std::time::Duration;
@@ -34,7 +34,7 @@ pub trait DnsTcpStream: AsyncRead + AsyncWrite + Unpin + Send + Sync + Sized + '
 #[async_trait]
 pub trait Connect: DnsTcpStream {
     /// connect to tcp
-    async fn connect(addr: SocketAddr) -> io::Result<Self>;
+    async fn connect(addr: SocketAddr, bind_addr: Option<IpAddr>) -> io::Result<Self>;
 }
 
 /// Current state while writing to the remote of the TCP connection
@@ -95,9 +95,11 @@ impl<S: Connect> TcpStream<S> {
     /// # Arguments
     ///
     /// * `name_server` - the IP and Port of the DNS server to connect to
+    /// * `bind_addr` - the IP to connect from
     #[allow(clippy::new_ret_no_self, clippy::type_complexity)]
     pub fn new<E>(
         name_server: SocketAddr,
+        bind_addr: Option<IpAddr>,
     ) -> (
         impl Future<Output = Result<TcpStream<S>, io::Error>> + Send,
         BufStreamHandle,
@@ -105,7 +107,7 @@ impl<S: Connect> TcpStream<S> {
     where
         E: FromProtoError,
     {
-        Self::with_timeout(name_server, Duration::from_secs(5))
+        Self::with_timeout(name_server, bind_addr, Duration::from_secs(5))
     }
 
     /// Creates a new future of the eventually establish a IO stream connection or fail trying
@@ -113,10 +115,12 @@ impl<S: Connect> TcpStream<S> {
     /// # Arguments
     ///
     /// * `name_server` - the IP and Port of the DNS server to connect to
+    /// * `bind_addr` - the IP to connect from
     /// * `timeout` - connection timeout
     #[allow(clippy::type_complexity)]
     pub fn with_timeout(
         name_server: SocketAddr,
+        bind_addr: Option<IpAddr>,
         timeout: Duration,
     ) -> (
         impl Future<Output = Result<TcpStream<S>, io::Error>> + Send,
@@ -125,17 +129,18 @@ impl<S: Connect> TcpStream<S> {
         let (message_sender, outbound_messages) = BufStreamHandle::create();
         // This set of futures collapses the next tcp socket into a stream which can be used for
         //  sending and receiving tcp packets.
-        let stream_fut = Self::connect(name_server, timeout, outbound_messages);
+        let stream_fut = Self::connect(name_server, bind_addr, timeout, outbound_messages);
 
         (stream_fut, message_sender)
     }
 
     async fn connect(
         name_server: SocketAddr,
+        bind_addr: Option<IpAddr>,
         timeout: Duration,
         outbound_messages: StreamReceiver,
     ) -> Result<TcpStream<S>, io::Error> {
-        let tcp = S::connect(name_server);
+        let tcp = S::connect(name_server, bind_addr);
         S::Time::timeout(timeout, tcp)
             .map(move |tcp_stream: Result<Result<S, io::Error>, _>| {
                 tcp_stream

@@ -7,9 +7,9 @@
 
 //! UDP based DNS client connection for Client impls
 
-use std::marker::PhantomData;
 use std::net::SocketAddr;
 use std::sync::Arc;
+use std::{marker::PhantomData, net::IpAddr};
 
 use rustls::{Certificate, ClientConfig};
 use trust_dns_https::{HttpsClientConnect, HttpsClientStream, HttpsClientStreamBuilder};
@@ -24,6 +24,7 @@ use crate::rr::dnssec::Signer;
 #[derive(Clone)]
 pub struct HttpsClientConnection<T> {
     name_server: SocketAddr,
+    bind_addr: Option<IpAddr>,
     dns_name: String,
     client_config: ClientConfig,
     marker: PhantomData<T>,
@@ -59,7 +60,7 @@ where
         // TODO: maybe signer needs to be applied in https...
         let https_builder =
             HttpsClientStreamBuilder::with_client_config(Arc::new(self.client_config.clone()));
-        https_builder.build(self.name_server, self.dns_name.clone())
+        https_builder.build(self.name_server, self.bind_addr, self.dns_name.clone())
     }
 }
 
@@ -97,9 +98,15 @@ impl HttpsClientConnectionBuilder {
     ///
     /// * `name_server` - IP and Port for the remote DNS resolver
     /// * `dns_name` - The DNS name, Subject Public Key Info (SPKI) name, as associated to a certificate
-    pub fn build<T>(self, name_server: SocketAddr, dns_name: String) -> HttpsClientConnection<T> {
+    pub fn build<T>(
+        self,
+        name_server: SocketAddr,
+        bind_addr: Option<IpAddr>,
+        dns_name: String,
+    ) -> HttpsClientConnection<T> {
         HttpsClientConnection {
             name_server,
+            bind_addr,
             dns_name,
             client_config: self.client_config,
             marker: PhantomData,

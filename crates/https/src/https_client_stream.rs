@@ -5,7 +5,6 @@
 // http://opensource.org/licenses/MIT>, at your option. This file may not be
 // copied, modified, or distributed except according to those terms.
 
-use std::fmt::{self, Display};
 use std::future::Future;
 use std::io;
 use std::net::SocketAddr;
@@ -14,6 +13,10 @@ use std::pin::Pin;
 use std::str::FromStr;
 use std::sync::Arc;
 use std::task::{Context, Poll};
+use std::{
+    fmt::{self, Display},
+    net::IpAddr,
+};
 
 use bytes::{Bytes, BytesMut};
 use futures_util::future::{FutureExt, TryFutureExt};
@@ -312,11 +315,13 @@ impl HttpsClientStreamBuilder {
     /// # Arguments
     ///
     /// * `name_server` - IP and Port for the remote DNS resolver
+    /// * `bind_addr` - the IP to connect from
     /// * `dns_name` - The DNS name, Subject Public Key Info (SPKI) name, as associated to a certificate
     /// * `loop_handle` - The reactor Core handle
     pub fn build<S: Connect>(
         self,
         name_server: SocketAddr,
+        bind_addr: Option<IpAddr>,
         dns_name: String,
     ) -> HttpsClientConnect<S> {
         assert!(self
@@ -332,6 +337,7 @@ impl HttpsClientStreamBuilder {
 
         HttpsClientConnect::<S>(HttpsClientConnectState::ConnectTcp {
             name_server,
+            bind_addr,
             tls: Some(tls),
         })
     }
@@ -372,6 +378,7 @@ where
 {
     ConnectTcp {
         name_server: SocketAddr,
+        bind_addr: Option<IpAddr>,
         tls: Option<TlsConfig>,
     },
     TcpConnecting {
@@ -417,10 +424,11 @@ where
             let next = match *self {
                 HttpsClientConnectState::ConnectTcp {
                     name_server,
+                    bind_addr,
                     ref mut tls,
                 } => {
                     debug!("tcp connecting to: {}", name_server);
-                    let connect = S::connect(name_server);
+                    let connect = S::connect(name_server, bind_addr);
                     HttpsClientConnectState::TcpConnecting {
                         connect,
                         name_server,
@@ -562,8 +570,11 @@ mod tests {
         client_config.key_log = Arc::new(KeyLogFile::new());
 
         let https_builder = HttpsClientStreamBuilder::with_client_config(Arc::new(client_config));
-        let connect =
-            https_builder.build::<AsyncIo02As03<TokioTcpStream>>(google, "dns.google".to_string());
+        let connect = https_builder.build::<AsyncIo02As03<TokioTcpStream>>(
+            google,
+            None,
+            "dns.google".to_string(),
+        );
 
         // tokio runtime stuff...
         let mut runtime = Runtime::new().expect("could not start runtime");
@@ -637,8 +648,11 @@ mod tests {
         client_config.alpn_protocols.push(ALPN_H2.to_vec());
 
         let https_builder = HttpsClientStreamBuilder::with_client_config(Arc::new(client_config));
-        let connect = https_builder
-            .build::<AsyncIo02As03<TokioTcpStream>>(cloudflare, "cloudflare-dns.com".to_string());
+        let connect = https_builder.build::<AsyncIo02As03<TokioTcpStream>>(
+            cloudflare,
+            None,
+            "cloudflare-dns.com".to_string(),
+        );
 
         // tokio runtime stuff...
         let mut runtime = Runtime::new().expect("could not start runtime");
