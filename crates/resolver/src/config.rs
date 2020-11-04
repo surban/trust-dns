@@ -581,9 +581,9 @@ impl NameServerConfigGroup {
     }
 
     /// Sets the client IP address on all name servers.
-    pub fn with_bind_addr(mut self, bind_addr: &Option<IpAddr>) -> Self {
+    pub fn with_bind_addr(mut self, bind_addr: Option<IpAddr>) -> Self {
         for server in &mut self.0 {
-            server.bind_addr = bind_addr.clone();
+            server.bind_addr = bind_addr;
         }
         self
     }
